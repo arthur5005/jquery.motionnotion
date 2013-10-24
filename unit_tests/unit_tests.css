@@ -1,0 +1,71 @@
+.box {
+	width: 200px;
+	height: 200px;
+	background-color: red;
+	border: 3px solid black;
+	margin: 3px;
+}
+
+.dummyAnimationClass {
+	-webkit-animation-name: dummyAnimationName;
+	-moz-animation-name: dummyAnimationName;
+	-ms-animation-name: dummyAnimationName;
+	-o-animation-name: dummyAnimationName;
+	animation-name: dummyAnimationName;
+	-webkit-animation-duration: 0s;
+}
+
+.box.animating.mn-removing {
+	-webkit-animation-name: fadeOut, mn-removing;
+	-webkit-animation-duration: 1s;
+	-moz-animation-name: fadeOut, mn-removing;
+	-moz-animation-duration: 1s;
+	-ms-animation-name: fadeOut, mn-removing;
+	-ms-animation-duration: 1s;
+	-o-animation-name: fadeOut, mn-removing;
+	-o-animation-duration: 1s;
+	animation-name: fadeOut, mn-removing;
+	animation-duration: 1s;
+}
+
+/** fade out */
+@-webkit-keyframes fadeOut {
+	0% {opacity: 1;}
+	100% {opacity: 0;}
+}
+
+@-moz-keyframes fadeOut {
+	0% {opacity: 1;}
+	100% {opacity: 0;}
+}
+
+@-o-keyframes fadeOut {
+	0% {opacity: 1;}
+	100% {opacity: 0;}
+}
+
+@keyframes fadeOut {
+	0% {opacity: 1;}
+	100% {opacity: 0;}
+}
+
+/** fade in */
+@-webkit-keyframes fadeIn {
+	0% {opacity: 0;}	
+	100% {opacity: 1;}
+}
+
+@-moz-keyframes fadeIn {
+	0% {opacity: 0;}	
+	100% {opacity: 1;}
+}
+
+@-o-keyframes fadeIn {
+	0% {opacity: 0;}	
+	100% {opacity: 1;}
+}
+
+@keyframes fadeIn {
+	0% {opacity: 0;}	
+	100% {opacity: 1;}
+}
