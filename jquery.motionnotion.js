@@ -1,4 +1,4 @@
-(function($){
+var self = function($){
 	var options = {
 		suspendAnimationsOnAll: false
 	};
@@ -175,7 +175,7 @@
 	 * New remove method.
 	 */
     $.fn.remove = function( selector, keepData /* Internal Use Only */ ) {
-		var els = selector ? jQuery.filter( selector, this ) : this;
+		var els = selector ? $.filter( selector, this ) : this;
 		
 		
 		for( var i = 0; i < els.length; i++ ) {
@@ -268,4 +268,11 @@
 		return this;
 	};
 	
-})(jQuery);
+}
+
+
+if( typeof define === "function" && define.amd ){
+	define(["jquery"], self);
+}else{
+	self(window.jQuery || window.Zepto);
+}
