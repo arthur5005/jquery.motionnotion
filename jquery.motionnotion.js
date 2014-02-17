@@ -181,36 +181,24 @@
             completionArgs = [];
         }
         
-		var deferredManipulations = $el.data('mnDeferredManipulations') || null;
-
-		if( !deferredManipulations || 
-			 deferredManipulations.state() == 'resolved' ){
-			var promise = applyTransition(
-				$el,
-				manipulationSuper,
-				transition,
-				completionArgs
-			);
-			
-			$el.data('mnDeferredManipulations', promise);
-		}else{
-			deferredManipulations.then(function(){
-				var promise = applyTransition(
-					$el,
-					manipulationSuper,
-					transition,
-					completionArgs
-				);
-				return promise;
-			});
+		var transitionOperation = $el.data('mnTransitionOperation') || null;
+		if( transitionOperation && transitionOperation.state() !== 'resolved' ){
+            //finish the current manipulation & animation.
+            transitionOperation.resolve();
 		}
+        
+		applyTransition(
+			$el,
+			manipulationSuper,
+			transition,
+			completionArgs
+		);
 	};
 	
 	
 	var applyTransition = function($el, manipulationSuper, transition, 
 		completionArgs) {
 		var transitionOperation = $.Deferred();
-		
 		var prevNames = getAnimationNames($el);
 
 		$el.addClass(transitionNames[transition]);
@@ -228,35 +216,44 @@
 			var openAnimations = $el.data('mnOpenAnimations') || 0;
 			$el.data('mnOpenAnimations', openAnimations + newNames.length);
 			
+            transitionOperation.done(function() {
+                completeTransition(
+                    $el, 
+                    manipulationSuper, 
+                    transition, 
+                    completionArgs
+                );
+            });
+            $el.data('mnTransitionOperation', transitionOperation);
+            
 			$el.on(
 				normalizeAnimationEventName('animationend'), 
 				{ 
-					manipulationSuper: manipulationSuper,
-					transition: transition,
-					completionArgs: completionArgs,
 					transitionOperation: transitionOperation
-					
 				},
 				animationEndHandler
-			 );
-		}else{
-			completeTransition(
-				$el, 
-				manipulationSuper, 
-				transition, 
-				completionArgs,
-				transitionOperation
 			);
+		}else{
+            completeTransition(
+                $el, 
+                manipulationSuper, 
+                transition, 
+                completionArgs
+            );
 		}
 		return transitionOperation.promise();
 	};
 	
 	var completeTransition = function($el, manipulationSuper, transition, 
-		completionArgs, transitionOperation) {
+		completionArgs) {
+		$el.off(
+			normalizeAnimationEventName('animationend'), 
+			animationEndHandler
+		);
+        $el.data('mnOpenAnimations', 0);
 	 	$el.removeClass(transitionNames[transition]);
 	 	manipulationSuper.apply($el, completionArgs);
 	 	$el.triggerHandler(transition+'End');
-		transitionOperation.resolve();
 	};
 	
 	
@@ -269,17 +266,7 @@
 		$el.data('mnOpenAnimations', openAnimations);
 
 		if(openAnimations == 0){
-			$el.off(
-				normalizeAnimationEventName('animationend'), 
-				animationEndHandler
-			 );
-			 completeTransition(
-				 $el,
-				 data.manipulationSuper,
-				 data.transition,
-				 data.completionArgs,
-				 data.transitionOperation
-			 );
+			data.transitionOperation.resolve();
 		}
 	};
 	
@@ -360,7 +347,6 @@
     $.fn.append = function() {
         if(this.domManip.length == 2) {
             return this.domManip(arguments, function(el){
-                console.log(this);
                 appendSuper.call($(this), el);
                 asyncManipulation($(el), function(){}, 'appending', []);
             });
@@ -455,9 +441,6 @@
 		case 'suspendAnimationsOnAll':
 			options.suspendAnimationsOnAll = param;
 			break;
-        case 'chain':
-            options.chain = param;
-            break;
 		case 'internals':
 			return {
 				'engines':						engines,
