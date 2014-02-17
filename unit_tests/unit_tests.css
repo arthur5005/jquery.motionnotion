@@ -28,6 +28,101 @@
 	animation-duration: 1s;
 }
 
+.box.animating.mn-hiding {
+	-webkit-animation-name: fadeOut, mn-hiding;
+	-webkit-animation-duration: 1s;
+	-moz-animation-name: fadeOut, mn-hiding;
+	-moz-animation-duration: 1s;
+	-ms-animation-name: fadeOut, mn-hiding;
+	-ms-animation-duration: 1s;
+	-o-animation-name: fadeOut, mn-hiding;
+	-o-animation-duration: 1s;
+	animation-name: fadeOut, mn-hiding;
+	animation-duration: 1s;
+}
+
+.box.animating.mn-showing {
+	-webkit-animation-name: fadeIn, mn-showing;
+	-webkit-animation-duration: 1s;
+	-moz-animation-name: fadeIn, mn-showing;
+	-moz-animation-duration: 1s;
+	-ms-animation-name: fadeIn, mn-showing;
+	-ms-animation-duration: 1s;
+	-o-animation-name: fadeIn, mn-showing;
+	-o-animation-duration: 1s;
+	animation-name: fadeIn, mn-showing;
+	animation-duration: 1s;
+}
+
+.box.animating.mn-appending {
+	-webkit-animation-name: fadeIn, mn-appending;
+	-webkit-animation-duration: 1s;
+	-moz-animation-name: fadeIn, mn-appending;
+	-moz-animation-duration: 1s;
+	-ms-animation-name: fadeIn, mn-appending;
+	-ms-animation-duration: 1s;
+	-o-animation-name: fadeIn, mn-appending;
+	-o-animation-duration: 1s;
+	animation-name: fadeIn, mn-appending;
+	animation-duration: 1s;
+}
+
+
+.box.animating.mn-prepending {
+	-webkit-animation-name: fadeIn, mn-prepending;
+	-webkit-animation-duration: 1s;
+	-moz-animation-name: fadeIn, mn-prepending;
+	-moz-animation-duration: 1s;
+	-ms-animation-name: fadeIn, mn-prepending;
+	-ms-animation-duration: 1s;
+	-o-animation-name: fadeIn, mn-prepending;
+	-o-animation-duration: 1s;
+	animation-name: fadeIn, mn-prepending;
+	animation-duration: 1s;
+}
+
+
+.box.animating.mn-beforing {
+	-webkit-animation-name: fadeIn, mn-beforing;
+	-webkit-animation-duration: 1s;
+	-moz-animation-name: fadeIn, mn-beforing;
+	-moz-animation-duration: 1s;
+	-ms-animation-name: fadeIn, mn-beforing;
+	-ms-animation-duration: 1s;
+	-o-animation-name: fadeIn, mn-beforing;
+	-o-animation-duration: 1s;
+	animation-name: fadeIn, mn-beforing;
+	animation-duration: 1s;
+}
+
+
+.box.animating.mn-aftering {
+	-webkit-animation-name: fadeIn, mn-aftering;
+	-webkit-animation-duration: 1s;
+	-moz-animation-name: fadeIn, mn-aftering;
+	-moz-animation-duration: 1s;
+	-ms-animation-name: fadeIn, mn-aftering;
+	-ms-animation-duration: 1s;
+	-o-animation-name: fadeIn, mn-aftering;
+	-o-animation-duration: 1s;
+	animation-name: fadeIn, mn-aftering;
+	animation-duration: 1s;
+}
+
+
+.box.animating.mn-emptying {
+	-webkit-animation-name: flash, mn-emptying;
+	-webkit-animation-duration: 1s;
+	-moz-animation-name: flash, mn-emptying;
+	-moz-animation-duration: 1s;
+	-ms-animation-name: flash, mn-emptying;
+	-ms-animation-duration: 1s;
+	-o-animation-name: flash, mn-emptying;
+	-o-animation-duration: 1s;
+	animation-name: flash, mn-emptying;
+	animation-duration: 1s;
+}
+
 /** fade out */
 @-webkit-keyframes fadeOut {
 	0% {opacity: 1;}
@@ -69,3 +164,45 @@
 	0% {opacity: 0;}	
 	100% {opacity: 1;}
 }
+
+/** flash */
+@-webkit-keyframes flash {
+  0%, 50%, 100% {
+    opacity: 1;
+  }
+
+  25%, 75% {
+    opacity: 0;
+  }
+}
+
+@-moz-keyframes flash {
+  0%, 50%, 100% {
+    opacity: 1;
+  }
+
+  25%, 75% {
+    opacity: 0;
+  }
+}
+
+@-o-keyframes flash {
+  0%, 50%, 100% {
+    opacity: 1;
+  }
+
+  25%, 75% {
+    opacity: 0;
+  }
+}
+
+@keyframes flash {
+  0%, 50%, 100% {
+    opacity: 1;
+  }
+
+  25%, 75% {
+    opacity: 0;
+  }
+}
+

@@ -3,7 +3,6 @@
 		suspendAnimationsOnAll: false
 	};
 	
-	
 	var engines = {
 		STANDARD: 	'standard',
 		MOZILLA: 	'mozilla',
@@ -12,6 +11,13 @@
 		OPERA:  	'opera'
 	};
 	
+    var checkOrder = [
+        engines.STANDARD,
+        engines.MOZILLA,
+        engines.WEBKIT,
+        engines.MICROSOFT,
+        engines.OPERA
+    ];
 	
 	var stylePrefixes = {
 		'standard': 	'',
@@ -63,15 +69,13 @@
 		'showing': 		'mn-showing'
 	};
 	 
-	 
 	//Current test for animationName support:
 	//http://jsfiddle.net/39X9S/
 	var engineDetected = (function() { 
 	    var div = document.createElement('div');
 	    var engineDetected = false;
-		
-		for( var engine in engines ) {
-			engineName = engines[engine];
+		for( var i = 0; i < checkOrder.length; i++){
+		    engineName = checkOrder[i];
 			var property = animationNameStyleNames[ engineName ];
 			if(div.style[property] !== undefined){
 				engineDetected = engineName;
@@ -161,77 +165,280 @@
 		//new animations are ones that were not there before.
 		return $(currNames).not(prevNames).get();
 	};
+		
+	var asyncManipulation = function() {
+        var args = arguments;
+        var $el, manipulationSuper, transition, completionArgs;
+        if(args.length == 4){
+            $el = args[0];
+            manipulationSuper = args[1];
+            transition = args[2];
+            completionArgs = args[3];
+        }else{
+            $el = args[0];
+            manipulationSuper = function() {};
+            transition = args[1];
+            completionArgs = [];
+        }
+        
+		var deferredManipulations = $el.data('mnDeferredManipulations') || null;
+
+		if( !deferredManipulations || 
+			 deferredManipulations.state() == 'resolved' ){
+			var promise = applyTransition(
+				$el,
+				manipulationSuper,
+				transition,
+				completionArgs
+			);
+			
+			$el.data('mnDeferredManipulations', promise);
+		}else{
+			deferredManipulations.then(function(){
+				var promise = applyTransition(
+					$el,
+					manipulationSuper,
+					transition,
+					completionArgs
+				);
+				return promise;
+			});
+		}
+	};
+	
+	
+	var applyTransition = function($el, manipulationSuper, transition, 
+		completionArgs) {
+		var transitionOperation = $.Deferred();
+		
+		var prevNames = getAnimationNames($el);
+
+		$el.addClass(transitionNames[transition]);
+		
+		if( hasAnimation($el, transitionNames[transition]) &&
+		    !$el.data('mnSuspendAnimations') &&
+			!options.suspendAnimationsOnAll
+		 ) {
+				
+			var newNames = getNewAnimationNames(
+				prevNames, 
+				getAnimationNames($el)
+			);
+			
+			var openAnimations = $el.data('mnOpenAnimations') || 0;
+			$el.data('mnOpenAnimations', openAnimations + newNames.length);
+			
+			$el.on(
+				normalizeAnimationEventName('animationend'), 
+				{ 
+					manipulationSuper: manipulationSuper,
+					transition: transition,
+					completionArgs: completionArgs,
+					transitionOperation: transitionOperation
+					
+				},
+				animationEndHandler
+			 );
+		}else{
+			completeTransition(
+				$el, 
+				manipulationSuper, 
+				transition, 
+				completionArgs,
+				transitionOperation
+			);
+		}
+		return transitionOperation.promise();
+	};
+	
+	var completeTransition = function($el, manipulationSuper, transition, 
+		completionArgs, transitionOperation) {
+	 	$el.removeClass(transitionNames[transition]);
+	 	manipulationSuper.apply($el, completionArgs);
+	 	$el.triggerHandler(transition+'End');
+		transitionOperation.resolve();
+	};
+	
+	
+	var animationEndHandler = function(event) {
+		var data = event.data;
+		var $el = $(this);
+		
+		var openAnimations = $el.data('mnOpenAnimations');
+		openAnimations --;
+		$el.data('mnOpenAnimations', openAnimations);
+
+		if(openAnimations == 0){
+			$el.off(
+				normalizeAnimationEventName('animationend'), 
+				animationEndHandler
+			 );
+			 completeTransition(
+				 $el,
+				 data.manipulationSuper,
+				 data.transition,
+				 data.completionArgs,
+				 data.transitionOperation
+			 );
+		}
+	};
 	
 	//get all original methods, store them as super methods!
 	var removeSuper = $.fn.remove;
     var appendSuper = $.fn.append;
 	var prependSuper = $.fn.prepend;
-	var beforeSuper = $.fn.prepend;
+	var beforeSuper = $.fn.before;
 	var afterSuper = $.fn.after;
 	var emptySuper = $.fn.empty;
 	var replaceWithSuper = $.fn.replaceWith;
+	var hideSuper = $.fn.hide;
+	var showSuper = $.fn.show;
+	
 
-	/**
+	/** 
 	 * New remove method.
 	 */
-    $.fn.remove = function( selector, keepData /* Internal Use Only */ ) {
+    $.fn.remove = function( selector, keepData /*Internal Use Only*/ ) {
 		var els = selector ? jQuery.filter( selector, this ) : this;
-		
+		var completionArgs = [undefined, keepData];
 		
 		for( var i = 0; i < els.length; i++ ) {
-			var $el = $(els[i]);
-			var prevNames = getAnimationNames($el);
-			
-			$el.addClass(transitionNames['removing']);
-			
-			if( hasAnimation($el, transitionNames['removing']) &&
-			    !$el.data('mnSuspendAnimations') &&
-				!options.suspendAnimationsOnAll
-			 ) {
-					
-				var newNames = getNewAnimationNames(
-					prevNames, 
-					getAnimationNames($el)
-				);
-				
-				var openAnimations = $el.data('mnOpenAnimations') || 0;
-				$el.data('mnOpenAnimations', openAnimations + newNames.length);
-				
-				$el.on(
-					normalizeAnimationEventName('animationend'), 
-					[keepData, $el],
-					removingAnimationEndHandler
-				 );
-			}else{ 
-				completeRemoving($el, keepData);
-			}
+			var $el = $(els[i]);	
+			asyncManipulation($el, removeSuper, 'removing', completionArgs);
+		}
+		return this;
+    };
+    
+	/**
+	 * New detach method.
+	 */
+    $.fn.detach = function( selector ) {
+		var els = selector ? jQuery.filter( selector, this ) : this;
+		
+		for( var i = 0; i < els.length; i++ ) {
+			var $el = $(els[i]);	
+			asyncManipulation($el, removeSuper, 'detaching', [undefined, true /*keepData*/]);
 		}
 		return this;
     };
 	
-	var removingAnimationEndHandler = function(event){
-		var keepData = event.data[0];
-		var $el = event.data[1];
-		
-		
-		var openAnimations = $el.data('mnOpenAnimations');
-		openAnimations --;
-		$el.data('mnOpenAnimations', openAnimations);
-		
-		if(openAnimations == 0){
-			$el.off(
-				normalizeAnimationEventName('animationend'), 
-				removingAnimationEndHandler
-			 );
-			 completeRemoving($el, keepData);
-		}
-	};
 	
-	var completeRemoving = function($el, keepData){
-		 $el.removeClass(transitionNames['removing']);
-		 removeSuper.apply($el, [undefined, keepData]);
-		 $el.triggerHandler('remove');
-	};
+	/**
+	 * New hide method.
+	 */
+    $.fn.hide = function() {
+		if( arguments.length > 0 ){
+			//TODO: wrap callback function with an event dispatcher
+			hideSuper.apply(this, arguments);
+		}else{
+			for( var i = 0; i < this.length; i++){
+				var $el = $(this[i]);
+				asyncManipulation($el, hideSuper, 'hiding', []);
+			}
+		}
+    };
+	
+	/**
+	 * New show method.
+	 */
+    $.fn.show = function() {
+		if( arguments.length > 0 ){
+			//TODO: wrap callback function with an event dispatcher
+			showSuper.apply(this, arguments); 
+		}else{
+			for( var i = 0; i < this.length; i++){
+				var $el = $(this[i]);
+				showSuper.call($el);
+				asyncManipulation($el, 'showing');
+			}
+		}
+    };
+	
+	/**
+	 * New append mehtod
+	 */
+    $.fn.append = function() {
+        if(this.domManip.length == 2) {
+            return this.domManip(arguments, function(el){
+                console.log(this);
+                appendSuper.call($(this), el);
+                asyncManipulation($(el), function(){}, 'appending', []);
+            });
+        }else if(this.domManip.length == 3){
+            return this.domManip(arguments, this, function(el){
+                appendSuper.call($(this), el);
+                asyncManipulation($(el), 'appending');
+            });
+        }
+    };
+	
+	/**
+	 * New prepend method.
+	 */
+    $.fn.prepend = function() {
+        if(this.domManip.length == 2) {
+            return this.domManip(arguments, function(el){
+                prependSuper.call($(this), el);
+                asyncManipulation($(el), 'prepending');
+            });
+        //for older versions of jQuery that take three arguments
+        }else if(this.domManip.length == 3){
+            return this.domManip(arguments, false, function(el){
+                prependSuper.call($(this), el);
+                asyncManipulation($(el), 'prepending');
+            });
+        }
+    };
+    
+	/**
+	 * New after method.
+	 */
+    $.fn.after = function() {
+        if(this.domManip.length == 2) {
+            return this.domManip(arguments, function(el){
+                afterSuper.call($(this), el);
+                asyncManipulation($(el), 'aftering');
+            });
+        //for older versions of jQuery that take three arguments
+        }else if(this.domManip.length == 3){
+            return this.domManip(arguments, false, function(el){
+                afterSuper.call($(this), el);
+                asyncManipulation($(el), 'aftering');
+            });
+        }
+    };
+    
+	/**
+	 * New before method.
+	 */
+    $.fn.before = function() {
+        if(this.domManip.length == 2) {
+            return this.domManip(arguments, function(el){
+                beforeSuper.call($(this), el);
+                asyncManipulation($(el), 'beforing');
+            });
+        //for older versions of jQuery that take three arguments
+        }else if(this.domManip.length == 3){
+            return this.domManip(arguments, false, function(el){
+                beforeSuper.call($(this), el);
+                asyncManipulation($(el), 'beforing');
+            });
+        }
+    };
+    
+	/**
+	 * New empty method.
+	 */
+    $.fn.empty = function() {
+		for( var i = 0; i < this.length; i++){
+			var $el = $(this[i]);
+			emptySuper.call($el);
+            asyncManipulation($el, 'emptying');
+		}
+        
+        return this;
+    };
+	
 	
 	//prototype motionNotion
 	$.fn.motionNotion = function(method, param){
@@ -248,6 +455,9 @@
 		case 'suspendAnimationsOnAll':
 			options.suspendAnimationsOnAll = param;
 			break;
+        case 'chain':
+            options.chain = param;
+            break;
 		case 'internals':
 			return {
 				'engines':						engines,
@@ -267,5 +477,5 @@
 		}
 		return this;
 	};
-	
+	  
 })(jQuery);
