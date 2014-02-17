@@ -166,20 +166,10 @@
 		return $(currNames).not(prevNames).get();
 	};
 		
-	var asyncManipulation = function() {
-        var args = arguments;
-        var $el, manipulationSuper, transition, completionArgs;
-        if(args.length == 4){
-            $el = args[0];
-            manipulationSuper = args[1];
-            transition = args[2];
-            completionArgs = args[3];
-        }else{
-            $el = args[0];
-            manipulationSuper = function() {};
-            transition = args[1];
-            completionArgs = [];
-        }
+	var asyncManipulation = function($el, transition, manipulationSuper, superScope, superArgs) {
+        manipulationSuper = manipulationSuper || function() {};
+        superArgs = superArgs || [];
+        superScope = superScope || $el;
         
 		var transitionOperation = $el.data('mnTransitionOperation') || null;
 		if( transitionOperation && transitionOperation.state() !== 'resolved' ){
@@ -187,17 +177,42 @@
             transitionOperation.resolve();
 		}
         
+        //apply super asynchronosly incase an animation takes place.
 		applyTransition(
 			$el,
-			manipulationSuper,
 			transition,
-			completionArgs
+            manipulationSuper,
+            superScope,
+			superArgs
 		);
 	};
+    
+    var syncManipulation = function($el, transition, manipulationSuper, superScope, superArgs) {
+        manipulationSuper = manipulationSuper || function() {};
+        superArgs = superArgs || [];
+        superScope = superScope || $el;
+        
+		var transitionOperation = $el.data('mnTransitionOperation') || null;
+		if( transitionOperation && transitionOperation.state() !== 'resolved' ){
+            //finish the current manipulation & animation.
+            transitionOperation.resolve();
+		}
+        
+        //apply super right away (synchronosly)
+        manipulationSuper.apply(superScope, superArgs);
+        
+		applyTransition(
+			$el,
+			transition
+		);
+    };
 	
 	
-	var applyTransition = function($el, manipulationSuper, transition, 
-		completionArgs) {
+	var applyTransition = function($el, transition, callback, scope, args) {
+        callback = callback || function() {};
+        scope = scope || $el;
+        args = args || [];
+        
 		var transitionOperation = $.Deferred();
 		var prevNames = getAnimationNames($el);
 
@@ -208,10 +223,7 @@
 			!options.suspendAnimationsOnAll
 		 ) {
 				
-			var newNames = getNewAnimationNames(
-				prevNames, 
-				getAnimationNames($el)
-			);
+			var newNames = getNewAnimationNames( prevNames, getAnimationNames($el) );
 			
 			var openAnimations = $el.data('mnOpenAnimations') || 0;
 			$el.data('mnOpenAnimations', openAnimations + newNames.length);
@@ -219,9 +231,10 @@
             transitionOperation.done(function() {
                 completeTransition(
                     $el, 
-                    manipulationSuper, 
                     transition, 
-                    completionArgs
+                    callback,
+                    scope,
+                    args
                 );
             });
             $el.data('mnTransitionOperation', transitionOperation);
@@ -236,23 +249,22 @@
 		}else{
             completeTransition(
                 $el, 
-                manipulationSuper, 
                 transition, 
-                completionArgs
+                callback,
+                scope,
+                args
             );
 		}
-		return transitionOperation.promise();
 	};
 	
-	var completeTransition = function($el, manipulationSuper, transition, 
-		completionArgs) {
+	var completeTransition = function($el, transition, callback, scope, args) {
 		$el.off(
 			normalizeAnimationEventName('animationend'), 
 			animationEndHandler
 		);
         $el.data('mnOpenAnimations', 0);
 	 	$el.removeClass(transitionNames[transition]);
-	 	manipulationSuper.apply($el, completionArgs);
+	 	callback.apply(scope, args);
 	 	$el.triggerHandler(transition+'End');
 	};
 	
@@ -291,7 +303,7 @@
 		
 		for( var i = 0; i < els.length; i++ ) {
 			var $el = $(els[i]);	
-			asyncManipulation($el, removeSuper, 'removing', completionArgs);
+			asyncManipulation($el, 'removing', removeSuper, $el, completionArgs);
 		}
 		return this;
     };
@@ -304,7 +316,7 @@
 		
 		for( var i = 0; i < els.length; i++ ) {
 			var $el = $(els[i]);	
-			asyncManipulation($el, removeSuper, 'detaching', [undefined, true /*keepData*/]);
+			asyncManipulation($el, 'detaching', removeSuper, $el, [undefined, true /*keepData*/]);
 		}
 		return this;
     };
@@ -320,7 +332,7 @@
 		}else{
 			for( var i = 0; i < this.length; i++){
 				var $el = $(this[i]);
-				asyncManipulation($el, hideSuper, 'hiding', []);
+				asyncManipulation($el, 'hiding', hideSuper, $el);
 			}
 		}
     };
@@ -335,8 +347,7 @@
 		}else{
 			for( var i = 0; i < this.length; i++){
 				var $el = $(this[i]);
-				showSuper.call($el);
-				asyncManipulation($el, 'showing');
+				syncManipulation($el, 'showing', showSuper, $el);
 			}
 		}
     };
@@ -347,13 +358,11 @@
     $.fn.append = function() {
         if(this.domManip.length == 2) {
             return this.domManip(arguments, function(el){
-                appendSuper.call($(this), el);
-                asyncManipulation($(el), function(){}, 'appending', []);
+                syncManipulation($(el),'appending', appendSuper, $(this), [el]);
             });
         }else if(this.domManip.length == 3){
-            return this.domManip(arguments, this, function(el){
-                appendSuper.call($(this), el);
-                asyncManipulation($(el), 'appending');
+            return this.domManip(arguments, false, function(el){
+                syncManipulation($(el),'appending', appendSuper, $(this), [el]);
             });
         }
     };
@@ -364,14 +373,12 @@
     $.fn.prepend = function() {
         if(this.domManip.length == 2) {
             return this.domManip(arguments, function(el){
-                prependSuper.call($(this), el);
-                asyncManipulation($(el), 'prepending');
+                syncManipulation($(el), 'prepending', prependSuper, $(this), [el]);
             });
         //for older versions of jQuery that take three arguments
         }else if(this.domManip.length == 3){
             return this.domManip(arguments, false, function(el){
-                prependSuper.call($(this), el);
-                asyncManipulation($(el), 'prepending');
+                syncManipulation($(el), 'prepending', prependSuper, $(this), [el]);
             });
         }
     };
@@ -382,14 +389,12 @@
     $.fn.after = function() {
         if(this.domManip.length == 2) {
             return this.domManip(arguments, function(el){
-                afterSuper.call($(this), el);
-                asyncManipulation($(el), 'aftering');
+                syncManipulation($(el), 'aftering', afterSuper, $(this), [el]);
             });
         //for older versions of jQuery that take three arguments
         }else if(this.domManip.length == 3){
             return this.domManip(arguments, false, function(el){
-                afterSuper.call($(this), el);
-                asyncManipulation($(el), 'aftering');
+                syncManipulation($(el), 'aftering', afterSuper, $(this), [el]);
             });
         }
     };
@@ -400,14 +405,12 @@
     $.fn.before = function() {
         if(this.domManip.length == 2) {
             return this.domManip(arguments, function(el){
-                beforeSuper.call($(this), el);
-                asyncManipulation($(el), 'beforing');
+                syncManipulation($(el), 'beforing', beforeSuper, $(this), [el]);
             });
         //for older versions of jQuery that take three arguments
         }else if(this.domManip.length == 3){
             return this.domManip(arguments, false, function(el){
-                beforeSuper.call($(this), el);
-                asyncManipulation($(el), 'beforing');
+                syncManipulation($(el), 'beforing', beforeSuper, $(this), [el]);
             });
         }
     };
@@ -418,8 +421,7 @@
     $.fn.empty = function() {
 		for( var i = 0; i < this.length; i++){
 			var $el = $(this[i]);
-			emptySuper.call($el);
-            asyncManipulation($el, 'emptying');
+            syncManipulation($el, 'emptying', emptySuper);
 		}
         
         return this;
