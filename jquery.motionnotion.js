@@ -1,6 +1,7 @@
-(function($){
+var self = function($){
 	var options = {
-		suspendAnimationsOnAll: false
+		suspendAnimationsOnAll: false,
+        useCustomManip: false
 	};
 	
 	var engines = {
@@ -281,6 +282,87 @@
 			data.transitionOperation.resolve();
 		}
 	};
+    
+    //Borrowed from Zepto.js
+    var traverseNode = function(node, fun) {
+        fun(node)
+        for (var key in node.childNodes) traverseNode(node.childNodes[key], fun)
+    }
+    
+    //Borrowed from Zepto.js
+    var fragmentRE = /^\s*<(\w+|!)[^>]*>/,
+        singleTagRE = /^<(\w+)\s*\/?>(?:<\/\1>|)$/,
+        tagExpanderRE = /<(?!area|br|col|embed|hr|img|input|link|meta|param)(([\w:]+)[^>]*)\/>/ig,
+        methodAttributes = ['val', 'css', 'html', 'text', 'data', 'width', 'height', 'offset'],
+        table = document.createElement('table'),
+        tableRow = document.createElement('tr'),
+        containers = {
+          'tr': document.createElement('tbody'),
+          'tbody': table, 'thead': table, 'tfoot': table,
+          'td': tableRow, 'th': tableRow,
+          '*': document.createElement('div')
+        };
+        
+    //Borrowed and modified from Zepto.js
+    var customFragment = function(html, name, properties) {
+        var dom, nodes, container;
+
+        // A special case optimization for a single tag
+        if (singleTagRE.test(html)) dom = $(document.createElement(RegExp.$1));
+
+        if (!dom) {
+            if (html.replace) html = html.replace(tagExpanderRE, "<$1></$2>");
+            if (name === undefined) name = fragmentRE.test(html) && RegExp.$1;
+            if (!(name in containers)) name = '*';
+
+            container = containers[name];
+            container.innerHTML = '' + html;
+            dom = $.each([].slice.call(container.childNodes), function(){
+              container.removeChild(this)
+            });
+        }
+
+        if ($.isPlainObject(properties)) {
+            nodes = $(dom);
+            $.each(properties, function(key, value) {
+                if (methodAttributes.indexOf(key) > -1) nodes[key](value)
+                else nodes.attr(key, value)
+            });
+        }
+
+        return dom;
+    }
+    
+    //Borrowed and modified from Zepto.js
+    var customDomManip = function(args, callback) {
+        // arguments can be nodes, arrays of nodes, jQuery objects and HTML strings
+        var argType, nodes = $.map(args, function(arg) {
+            argType = $.type(arg);
+            return argType == "object" || argType == "array" || arg == null ?
+            arg : customFragment(arg)
+        }),
+        copyByClone = this.length > 1;
+        
+        if (nodes.length < 1) return this;
+
+        return this.each(function(_, target) {
+
+            for(var i = 0; i < nodes.length; i++){
+                var node = nodes[i];
+                if (copyByClone) node = node.cloneNode(true);
+                if(node.get){
+                    node = node.get(0);
+                }
+                callback.call(this, node);
+                
+                traverseNode(node, function(el) {
+                    if (el.nodeName != null && el.nodeName.toUpperCase() === 'SCRIPT' &&
+                       (!el.type || el.type === 'text/javascript') && !el.src)
+                      window['eval'].call(window, el.innerHTML)
+                });
+            }
+        });
+    };
 	
 	//get all original methods, store them as super methods!
 	var removeSuper = $.fn.remove;
@@ -292,7 +374,16 @@
 	var replaceWithSuper = $.fn.replaceWith;
 	var hideSuper = $.fn.hide;
 	var showSuper = $.fn.show;
-	
+	var superDomManip = null;
+    
+    if($.fn.domManip){
+        superDomManip = $.fn.domManip;
+    }
+    //shim for if domManip doesn't work. Required for Zepto or any future version of jQuery that 
+    //doesn't expose domManip. HIGHLY EXPERIMENTAL.
+    if(!$.fn.domManip || options.useCustomManip == true){
+        $.fn.domManip = customDomManip;
+    }
 
 	/** 
 	 * New remove method.
@@ -312,7 +403,7 @@
 	 * New detach method.
 	 */
     $.fn.detach = function( selector ) {
-		var els = selector ? jQuery.filter( selector, this ) : this;
+		var els = selector ? $.filter( selector, this ) : this;
 		
 		for( var i = 0; i < els.length; i++ ) {
 			var $el = $(els[i]);	
@@ -441,8 +532,25 @@
 	$.motionNotion = function(method, param){
 		switch(method){
 		case 'suspendAnimationsOnAll':
-			options.suspendAnimationsOnAll = param;
+            if(arguments.length == 2){
+                options.suspendAnimationsOnAll = param;
+            }else{
+                return options.suspendAnimationsOnAll;
+            }
+			
 			break;
+        case 'useCustomManip':
+            if(arguments.length == 2){
+                options.useCustomManip = param;
+            
+                if(param == true) {
+                    $.fn.domManip = customDomManip;
+                }else if(superDomManip) {
+                    $.fn.domManip = superDomManip;
+                }
+            }else{
+                return options.useCustomManip;
+            }
 		case 'internals':
 			return {
 				'engines':						engines,
@@ -462,5 +570,10 @@
 		}
 		return this;
 	};
-	  
-})(jQuery);
+};
+
+if( typeof define === "function" && define.amd ){
+	define(["jquery"], self);
+}else{
+    self(window.jQuery || window.Zepto);
+}

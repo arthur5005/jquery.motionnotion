@@ -8,6 +8,10 @@ $(document).ready(function(){
             border: "solid"
         });
     }
+    if ( window.location.href.indexOf( "useCustomManip=true" ) > -1) {
+        $.motionNotion('useCustomManip', true);
+    }
+    
     
 	QUnit.log = function(result, message) {
 		if (window.console && window.console.log) {
@@ -319,9 +323,9 @@ $(document).ready(function(){
 	asyncTest(".empty() empties and animates", function(assert){
 		expect(4);
 		$div = $("<div class='box'></div>");
-        $div.append($("<div></div>"));
-        $div.append($("<div></div>"));
-        $div.append($("<div></div>"));
+        $div.append("<div></div>");
+        $div.append("<div></div>");
+        $div.append("<div></div>");
         $('#qunit-fixture').append($div);
 
 		assert.equal(
