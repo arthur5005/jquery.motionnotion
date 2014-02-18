@@ -260,7 +260,7 @@ $(document).ready(function(){
 		);
 		
         assert.equal(
-            $("#qunit-fixture").children(':eq(1)').get(0),
+            $("#qunit-fixture").children().eq(1).get(0),
             $div.get(0),
             "Second element is in-fact the new div."
         );
@@ -297,7 +297,7 @@ $(document).ready(function(){
 		);
 		
         assert.equal(
-            $("#qunit-fixture").children(':eq(0)').get(0),
+            $("#qunit-fixture").children().eq(0).get(0),
             $div.get(0),
             "First element is in-fact the new div."
         );

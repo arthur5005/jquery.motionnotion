@@ -49,7 +49,7 @@ var self = function($){
 	//research, but as per this table http://caniuse.com/css-animation -ms- 
 	//has never been required for animation support on any version of IE. 
 	var animationNameStyleNames = {
-		'standard':		'animationName', //standard access for jQuery
+		'standard':		'animation-name', //standard access for jQuery
 		'mozilla':		'-moz-animation-name', //unsupported access for jQuery
 		'webkit':		'-webkit-animation-name',//unsupported access for jQuery
 		'microsoft':	'-ms-animation-name', //unsupported access for jQuery
@@ -77,7 +77,11 @@ var self = function($){
 	    var engineDetected = false;
 		for( var i = 0; i < checkOrder.length; i++){
 		    engineName = checkOrder[i];
-			var property = animationNameStyleNames[ engineName ];
+            if(engineName == engines.STANDARD){
+                var property = 'animationName'
+            }else{
+                var property = animationNameStyleNames[ engineName ];
+            }
 			if(div.style[property] !== undefined){
 				engineDetected = engineName;
 				break;
