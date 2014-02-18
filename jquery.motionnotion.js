@@ -389,7 +389,7 @@ var self = function($){
 	 * New remove method.
 	 */
     $.fn.remove = function( selector, keepData /*Internal Use Only*/ ) {
-		var els = selector ? jQuery.filter( selector, this ) : this;
+		var els = selector ? $.filter( selector, this ) : this;
 		var completionArgs = [undefined, keepData];
 		
 		for( var i = 0; i < els.length; i++ ) {
